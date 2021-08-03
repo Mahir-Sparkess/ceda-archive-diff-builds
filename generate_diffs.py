@@ -1,5 +1,6 @@
 import argparse
 import json
+import requests
 from ceda_elasticsearch_tools.elasticsearch.ceda_elasticsearch_client import CEDAElasticsearchClient
 from datetime import datetime
 
@@ -8,9 +9,14 @@ parser.add_argument("source-index", help="name of source index")
 parser.add_argument("dest-index", help="name of destination index")
 args = parser.parse_args()
 es = CEDAElasticsearchClient()
+headers = {
+    'Content-Type': 'application/json',
+    'Accept': 'application/json'
+}
+auth = ()
 
 
-def get_events(source_index: str, dest_index: str) -> list[dict]:
+def get_events(source_index, dest_index):
     res = es.search(index=source_index, body={"query": {"match_all": {}}})
     source_hits = [hit["_source"] for hit in res["hits"]["hits"]]
     source_set = set([hit["collection_id"] for hit in source_hits])
@@ -47,9 +53,15 @@ def get_events(source_index: str, dest_index: str) -> list[dict]:
 
             }
         )
-    
-    print(json.dumps(events, indent=4))
-    return json.dumps(events, indent=4)
+
+    # print(requests.get("http://127.0.0.1:8000/api/events/").json())
+    events_json = json.dumps(events, indent=4)
+    r = requests.post(
+        "http://127.0.0.1:8000/api/events/",
+        data=events_json,
+        headers=headers
+    )
+    return r.status_code
 
 
 get_events(vars(args)["source-index"], vars(args)["dest-index"])
