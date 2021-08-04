@@ -1,8 +1,6 @@
 import argparse
 import json
 import requests
-# import os
-# from dotenv import load_dotenv
 from ceda_elasticsearch_tools.elasticsearch.ceda_elasticsearch_client import CEDAElasticsearchClient
 from datetime import datetime
 
@@ -19,7 +17,14 @@ headers = {
 }
 
 
-def get_events(source_index, dest_index):
+def get_events(source_index: str, dest_index: str):
+    """
+    extracts and identifies changes between to indices, and outputs a collection of events.
+    :param source_index: STRING, index of source
+    :param dest_index: STRING index of destination
+    :return: POST request of collection of events
+    """
+
     res = es.search(index=source_index, body={"query": {"match_all": {}}})
     source_hits = [hit["_source"] for hit in res["hits"]["hits"]]
     source_set = set([hit["collection_id"] for hit in source_hits])
@@ -34,10 +39,12 @@ def get_events(source_index, dest_index):
     removed = source_set - dest_set
     updated = dest_drs_set - source_drs_set
 
+    # creation of record of events.
     events = []
 
     for additions in added:
-        hit = next(hit for hit in dest_hits if hit["collection_id"] == additions)
+        res = es.search(index=dest_index, body={"query": {"term": {'_id': additions}}})
+        hit = res['hits']['hits'][0]['_source']
         events.append(
             {
                 "collection_id": hit["collection_id"],
@@ -49,7 +56,8 @@ def get_events(source_index, dest_index):
         )
 
     for removals in removed:
-        hit = next(hit for hit in source_hits if hit["collection_id"] == removals)
+        res = es.search(index=source_index, body={"query": {"term": {'_id': removals}}})
+        hit = res['hits']['hits'][0]['_source']
         events.append(
             {
                 "collection_id": hit["collection_id"],
@@ -61,28 +69,29 @@ def get_events(source_index, dest_index):
         )
 
     for update in updated:
-        update_collection_id = next(hit["collection_id"] for hit in dest_hits if hit["drsId"] == update)
-        hit = next(hit for hit in source_hits if hit["collection_id"] == update_collection_id)
-        events.append(
-            {
-                "collection_id": hit["collection_id"],
-                "collection_title": hit["title"],
-                "action": "updated",
-                "datetime": datetime.now().isoformat(),
+        res = es.search(index=dest_index, body={"query": {"term": {'drsId': update}}})
+        collection_id = res['hits']['hits'][0]['_id']
+        res = es.search(index=source_index, body={"query": {"term": {'_id': collection_id}}})
+        hit = res['hits']['hits'][0]['_source']
+        if hit:
+            events.append(
+                {
+                    "collection_id": hit["collection_id"],
+                    "collection_title": hit["title"],
+                    "action": "updated",
+                    "datetime": datetime.now().isoformat(),
 
-            }
-        )
+                }
+            )
 
-    # print(requests.get("http://127.0.0.1:8000/api/events/").json())
     events_json = json.dumps(events, indent=4)
-    print(events_json)
-    '''r = requests.post(
+    # print(events_json)
+    r = requests.post(
         "http://127.0.0.1:8000/api/events/",
         data=events_json,
         headers=headers,
     )
-    print(r.status_code)'''
-
+    print(f'HTTP Response {r.status_code}')    # HTTP response
 
 
 get_events(vars(args)["source-index"], vars(args)["dest-index"])
