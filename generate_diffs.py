@@ -7,8 +7,8 @@ from datetime import datetime
 parser = argparse.ArgumentParser(description="Generate a list of dictionaries containing events")
 parser.add_argument("source-index", help="name of source index")
 parser.add_argument("dest-index", help="name of destination index")
-parser.add_argument("url", help="URL of the request location", default="localhost:8000/api/events/")
 parser.add_argument("token", help="add authentication token")
+parser.add_argument("--url", help="URL of the request location", default="http://localhost:8000/api/events/")
 args = parser.parse_args()
 es = CEDAElasticsearchClient()
 headers = {
@@ -89,7 +89,7 @@ def get_events(source_index: str, dest_index: str):
     events_json = json.dumps(events, indent=4)
     # print(events_json)
     r = requests.post(
-        url=url,
+        url,
         data=events_json,
         headers=headers,
     )
