@@ -4,6 +4,7 @@ import requests
 from ceda_elasticsearch_tools.elasticsearch.ceda_elasticsearch_client import CEDAElasticsearchClient
 from datetime import datetime
 
+# Command-line arguments
 parser = argparse.ArgumentParser(description="Generate a list of dictionaries containing events")
 parser.add_argument("source-index", help="name of source index")
 parser.add_argument("dest-index", help="name of destination index")
@@ -87,7 +88,7 @@ def get_events(source_index: str, dest_index: str):
             )
 
     events_json = json.dumps(events, indent=4)
-    # print(events_json)
+    print(events_json)
     r = requests.post(
         url,
         data=events_json,
