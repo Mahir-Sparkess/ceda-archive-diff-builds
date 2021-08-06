@@ -1,21 +1,30 @@
 import argparse
 import json
-import requests
-from ceda_elasticsearch_tools.elasticsearch.ceda_elasticsearch_client import CEDAElasticsearchClient
 from datetime import datetime
 
+import requests
+from ceda_elasticsearch_tools.elasticsearch.ceda_elasticsearch_client import (
+    CEDAElasticsearchClient,
+)
+
 # Command-line arguments: [source-index] [dest-index] [token] [--url url]
-parser = argparse.ArgumentParser(description="Generate a list of dictionaries containing events")
+parser = argparse.ArgumentParser(
+    description="Generate a list of dictionaries containing events"
+)
 parser.add_argument("source-index", help="name of source index")
 parser.add_argument("dest-index", help="name of destination index")
 parser.add_argument("token", help="add authentication token")
-parser.add_argument("--url", help="URL of the request location", default="http://localhost:8000/api/events/")
+parser.add_argument(
+    "--url",
+    help="URL of the request location",
+    default="http://localhost:8000/api/events/",
+)
 args = parser.parse_args()
 es = CEDAElasticsearchClient()
 headers = {
-    'Authorization': f'Token {args.token}',
-    'Content-Type': 'application/json',
-    'Accept': 'application/json',
+    "Authorization": f"Token {args.token}",
+    "Content-Type": "application/json",
+    "Accept": "application/json",
 }
 url = args.url
 
@@ -32,12 +41,14 @@ def get_events(source_index: str, dest_index: str):
     res = es.search(index=source_index, body={"query": {"match_all": {}}})
     source_hits = [hit["_source"] for hit in res["hits"]["hits"]]
     source_set = set([hit["collection_id"] for hit in source_hits])
-    source_drs_set = set([tuple(hit['drsId']) for hit in source_hits if hit.get('drsId')])
+    source_drs_set = set(
+        [tuple(hit["drsId"]) for hit in source_hits if hit.get("drsId")]
+    )
 
     res = es.search(index=dest_index, body={"query": {"match_all": {}}})
     dest_hits = [hit["_source"] for hit in res["hits"]["hits"]]
     dest_set = set([hit["collection_id"] for hit in dest_hits])
-    dest_drs_set = set([tuple(hit['drsId']) for hit in source_hits if hit.get('drsId')])
+    dest_drs_set = set([tuple(hit["drsId"]) for hit in source_hits if hit.get("drsId")])
 
     added = dest_set - source_set
     removed = source_set - dest_set
@@ -47,44 +58,43 @@ def get_events(source_index: str, dest_index: str):
     events = []
 
     for additions in added:
-        res = es.search(index=dest_index, body={"query": {"term": {'_id': additions}}})
-        hit = res['hits']['hits'][0]['_source']
+        res = es.search(index=dest_index, body={"query": {"term": {"_id": additions}}})
+        hit = res["hits"]["hits"][0]["_source"]
         events.append(
             {
                 "collection_id": hit["collection_id"],
                 "collection_title": hit["title"],
                 "action": "added",
                 "datetime": datetime.now().isoformat(),
-
             }
         )
 
     for removals in removed:
-        res = es.search(index=source_index, body={"query": {"term": {'_id': removals}}})
-        hit = res['hits']['hits'][0]['_source']
+        res = es.search(index=source_index, body={"query": {"term": {"_id": removals}}})
+        hit = res["hits"]["hits"][0]["_source"]
         events.append(
             {
                 "collection_id": hit["collection_id"],
                 "collection_title": hit["title"],
                 "action": "removed",
                 "datetime": datetime.now().isoformat(),
-
             }
         )
 
     for update in updated:
-        res = es.search(index=dest_index, body={"query": {"term": {'drsId': update}}})
-        collection_id = res['hits']['hits'][0]['_id']
-        res = es.search(index=source_index, body={"query": {"term": {'_id': collection_id}}})
-        if res['hits']['hits']:
-            hit = res['hits']['hits'][0]['_source']
+        res = es.search(index=dest_index, body={"query": {"term": {"drsId": update}}})
+        collection_id = res["hits"]["hits"][0]["_id"]
+        res = es.search(
+            index=source_index, body={"query": {"term": {"_id": collection_id}}}
+        )
+        if res["hits"]["hits"]:
+            hit = res["hits"]["hits"][0]["_source"]
             events.append(
                 {
                     "collection_id": hit["collection_id"],
                     "collection_title": hit["title"],
                     "action": "updated",
                     "datetime": datetime.now().isoformat(),
-
                 }
             )
 
@@ -95,7 +105,7 @@ def get_events(source_index: str, dest_index: str):
         data=events_json,
         headers=headers,
     )
-    print(f'HTTP Response {r.status_code}')  # HTTP response
+    print(f"HTTP Response {r.status_code}")  # HTTP response
 
 
 get_events(vars(args)["source-index"], vars(args)["dest-index"])
