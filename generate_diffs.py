@@ -74,8 +74,8 @@ def get_events(source_index: str, dest_index: str):
         res = es.search(index=dest_index, body={"query": {"term": {'drsId': update}}})
         collection_id = res['hits']['hits'][0]['_id']
         res = es.search(index=source_index, body={"query": {"term": {'_id': collection_id}}})
-        hit = res['hits']['hits'][0]['_source']
-        if hit:
+        if res['hits']['hits']:
+            hit = res['hits']['hits'][0]['_source']
             events.append(
                 {
                     "collection_id": hit["collection_id"],
@@ -93,7 +93,7 @@ def get_events(source_index: str, dest_index: str):
         data=events_json,
         headers=headers,
     )
-    print(f'HTTP Response {r.status_code}')    # HTTP response
+    print(f'HTTP Response {r.status_code}')  # HTTP response
 
 
 get_events(vars(args)["source-index"], vars(args)["dest-index"])
