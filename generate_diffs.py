@@ -4,7 +4,7 @@ import requests
 from ceda_elasticsearch_tools.elasticsearch.ceda_elasticsearch_client import CEDAElasticsearchClient
 from datetime import datetime
 
-# Command-line arguments
+# Command-line arguments: [source-index] [dest-index] [token] [--url url]
 parser = argparse.ArgumentParser(description="Generate a list of dictionaries containing events")
 parser.add_argument("source-index", help="name of source index")
 parser.add_argument("dest-index", help="name of destination index")
@@ -21,7 +21,8 @@ url = args.url
 
 
 def get_events(source_index: str, dest_index: str):
-    """
+    """Return POST request to django-rest-framework API with list of Events JSON objects.
+
     extracts and identifies changes between to indices, and outputs a collection of events.
     :param source_index: STRING, index of source
     :param dest_index: STRING index of destination
@@ -88,7 +89,7 @@ def get_events(source_index: str, dest_index: str):
             )
 
     events_json = json.dumps(events, indent=4)
-    print(events_json)
+    # print(events_json)
     r = requests.post(
         url,
         data=events_json,
